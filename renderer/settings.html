@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>考试监控系统 - 设置</title>
+    <style>
+      body {
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        background-color: #f4f5f7;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #333;
+      }
+      .container {
+        background-color: #fff;
+        width: 450px;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #1a73e8;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 16px;
+        box-sizing: border-box;
+      }
+      input:focus {
+        outline: none;
+        border-color: #1a73e8;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        background-color: #1a73e8;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        margin-bottom: 10px;
+      }
+      button:hover {
+        background-color: #0d62c9;
+      }
+      button.secondary {
+        background-color: #5f6368;
+      }
+      button.secondary:hover {
+        background-color: #474a4f;
+      }
+      .error {
+        color: #d93025;
+        font-size: 14px;
+        margin-top: 5px;
+        display: none;
+      }
+      .system-info {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+      }
+      .system-info h2 {
+        font-size: 18px;
+        margin-bottom: 15px;
+      }
+      .info-item {
+        margin-bottom: 10px;
+        display: flex;
+      }
+      .info-label {
+        font-weight: 500;
+        width: 120px;
+      }
+      .info-value {
+        flex: 1;
+        word-break: break-all;
+      }
+      .stream-url {
+        font-family: monospace;
+        background-color: #f1f3f4;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 14px;
+        margin-top: 5px;
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>系统设置</h1>
+      <div id="settings-form">
+        <div class="form-group">
+          <label for="server-ip">服务器IP地址</label>
+          <input type="text" id="server-ip" placeholder="例如: 192.168.1.100" />
+          <div class="error" id="server-ip-error">请输入有效的服务器IP地址</div>
+        </div>
+        <div class="form-group">
+          <label for="server-port">服务器端口</label>
+          <input
+            type="text"
+            id="server-port"
+            placeholder="例如: 8080"
+            value="8080"
+          />
+          <div class="error" id="server-port-error">请输入有效的端口号</div>
+        </div>
+        <div class="form-group">
+          <label for="password">访问密码</label>
+          <input
+            type="password"
+            id="password"
+            placeholder="请输入服务器访问密码"
+          />
+          <div class="error" id="password-error">密码不能为空</div>
+        </div>
+        <div class="form-group">
+          <label for="machine-number">考试机号</label>
+          <input type="text" id="machine-number" placeholder="例如: 14" />
+          <div class="error" id="machine-number-error">
+            请输入有效的考试机号
+          </div>
+        </div>
+        <button id="save-button">保存设置</button>
+        <button id="back-button" class="secondary">返回</button>
+      </div>
+
+      <div class="system-info">
+        <h2>系统信息</h2>
+        <div class="info-item">
+          <div class="info-label">MAC地址:</div>
+          <div class="info-value" id="mac-address">--</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">IP地址:</div>
+          <div class="info-value" id="ip-address">--</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">直播流地址:</div>
+          <div class="info-value">
+            <div id="stream-status">未启动</div>
+            <div class="stream-url" id="stream-url"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const { ipcRenderer } = require("electron");
+
+      // 获取DOM元素
+      const serverIpInput = document.getElementById("server-ip");
+      const serverPortInput = document.getElementById("server-port");
+      const passwordInput = document.getElementById("password");
+      const machineNumberInput = document.getElementById("machine-number");
+      const saveButton = document.getElementById("save-button");
+      const backButton = document.getElementById("back-button");
+      const macAddressElem = document.getElementById("mac-address");
+      const ipAddressElem = document.getElementById("ip-address");
+      const streamStatusElem = document.getElementById("stream-status");
+      const streamUrlElem = document.getElementById("stream-url");
+
+      // 验证表单
+      function validateForm() {
+        let isValid = true;
+
+        // 验证服务器IP
+        if (!serverIpInput.value.trim()) {
+          document.getElementById("server-ip-error").style.display = "block";
+          isValid = false;
+        } else {
+          document.getElementById("server-ip-error").style.display = "none";
+        }
+
+        // 验证服务器端口
+        const portValue = serverPortInput.value.trim();
+        if (
+          !portValue ||
+          isNaN(portValue) ||
+          portValue < 1 ||
+          portValue > 65535
+        ) {
+          document.getElementById("server-port-error").style.display = "block";
+          isValid = false;
+        } else {
+          document.getElementById("server-port-error").style.display = "none";
+        }
+
+        // 验证密码
+        if (!passwordInput.value.trim()) {
+          document.getElementById("password-error").style.display = "block";
+          isValid = false;
+        } else {
+          document.getElementById("password-error").style.display = "none";
+        }
+
+        // 验证考试机号
+        if (!machineNumberInput.value.trim()) {
+          document.getElementById("machine-number-error").style.display =
+            "block";
+          isValid = false;
+        } else {
+          document.getElementById("machine-number-error").style.display =
+            "none";
+        }
+
+        return isValid;
+      }
+
+      // 保存按钮点击事件
+      saveButton.addEventListener("click", () => {
+        if (validateForm()) {
+          // 发送保存请求到主进程
+          ipcRenderer.send("save-settings", {
+            serverIp: serverIpInput.value.trim(),
+            serverPort: serverPortInput.value.trim(),
+            password: passwordInput.value.trim(),
+            machineNumber: machineNumberInput.value.trim(),
+          });
+
+          // 禁用按钮，显示加载状态
+          saveButton.disabled = true;
+          saveButton.innerText = "正在保存...";
+        }
+      });
+
+      // 返回按钮点击事件
+      backButton.addEventListener("click", () => {
+        ipcRenderer.send("settings-back");
+      });
+
+      // 接收保存响应
+      ipcRenderer.on("save-settings-response", (event, data) => {
+        saveButton.disabled = false;
+        saveButton.innerText = "保存设置";
+
+        if (data.success) {
+          alert("设置已保存");
+          // 重新获取系统信息
+          requestSystemInfo();
+        } else {
+          alert(`保存失败: ${data.message || "未知错误"}`);
+        }
+      });
+
+      // 请求系统信息
+      function requestSystemInfo() {
+        ipcRenderer.send("get-system-info");
+      }
+
+      // 接收系统信息
+      ipcRenderer.on("system-info", (event, data) => {
+        macAddressElem.textContent = data.macAddress || "--";
+        ipAddressElem.textContent = data.ipAddress || "--";
+
+        if (data.streamUrl) {
+          streamStatusElem.textContent = "已启动";
+          streamUrlElem.textContent = data.streamUrl;
+        } else {
+          streamStatusElem.textContent = "未启动";
+          streamUrlElem.textContent = "";
+        }
+      });
+
+      // 接收当前配置
+      ipcRenderer.on("current-settings", (event, settings) => {
+        serverIpInput.value = settings.serverIp || "";
+        serverPortInput.value = settings.serverPort || "8080";
+        passwordInput.value = settings.serverPassword || "";
+        machineNumberInput.value = settings.machineNumber || "";
+      });
+
+      // 页面加载时获取当前配置和系统信息
+      window.addEventListener("DOMContentLoaded", () => {
+        // 请求当前配置
+        ipcRenderer.send("get-current-settings");
+
+        // 请求系统信息
+        requestSystemInfo();
+      });
+    </script>
+  </body>
+</html>

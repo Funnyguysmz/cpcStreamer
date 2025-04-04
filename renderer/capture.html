@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>考试监控系统 - 直播推流</title>
+    <style>
+      body {
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        background-color: #f4f5f7;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        color: #333;
+      }
+      .header {
+        background-color: #1a73e8;
+        color: white;
+        padding: 15px;
+        text-align: center;
+      }
+      .content {
+        display: flex;
+        flex: 1;
+        padding: 20px;
+        gap: 20px;
+      }
+      .preview-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      .preview-title {
+        background-color: #f0f0f0;
+        padding: 10px;
+        font-weight: 500;
+        border-bottom: 1px solid #ddd;
+      }
+      .preview {
+        flex: 1;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #000;
+        position: relative;
+      }
+      .controls {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        width: 350px;
+      }
+      .control-group {
+        margin-bottom: 20px;
+      }
+      .control-title {
+        font-weight: 500;
+        margin-bottom: 10px;
+      }
+      select,
+      input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+      button {
+        padding: 10px 15px;
+        background-color: #1a73e8;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        margin-right: 10px;
+      }
+      button:hover {
+        background-color: #0d62c9;
+      }
+      .status {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 4px;
+      }
+      .status.success {
+        background-color: #e6f4ea;
+        color: #137333;
+      }
+      .status.error {
+        background-color: #fce8e6;
+        color: #c5221f;
+      }
+      .status.warning {
+        background-color: #fef7e0;
+        color: #b06000;
+      }
+      video {
+        max-width: 100%;
+        max-height: 100%;
+      }
+      .video-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+      #screen-video,
+      #camera-video {
+        background-color: #000;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      #camera-video {
+        position: absolute;
+        right: 30px;
+        bottom: 30px;
+        width: 200px;
+        height: 150px;
+        border: 2px solid #fff;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        z-index: 100;
+      }
+      .hidden {
+        display: none;
+      }
+      .stream-info {
+        background-color: #f0f8ff;
+        padding: 10px;
+        margin-top: 10px;
+        border-radius: 4px;
+        border: 1px solid #d0e0f0;
+        font-family: monospace;
+        word-break: break-all;
+      }
+      .stream-info-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .copy-button {
+        padding: 4px 8px;
+        font-size: 12px;
+        margin-left: 5px;
+      }
+      .device-list {
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        margin-top: 10px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 12px;
+      }
+      .notice {
+        background-color: #e8f0fe;
+        border-left: 4px solid #1a73e8;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>考试监控系统 - 直播推流</h1>
+    </div>
+
+    <div class="content">
+      <div class="preview-container">
+        <div class="preview-title">实时屏幕预览</div>
+        <div class="preview">
+          <div class="video-container">
+            <!-- 使用本地预览视频 -->
+            <video id="screen-video" autoplay muted></video>
+            <video id="camera-video" autoplay muted></video>
+          </div>
+        </div>
+
+        <!-- 添加流地址信息区域 -->
+        <div class="stream-info">
+          <div class="stream-info-title">屏幕推流地址：</div>
+          <div id="screen-url">等待推流开始...</div>
+          <button class="copy-button" onclick="copyToClipboard('screen-url')">
+            复制
+          </button>
+
+          <div class="stream-info-title" style="margin-top: 10px">
+            摄像头推流地址：
+          </div>
+          <div id="camera-url">等待推流开始...</div>
+          <button class="copy-button" onclick="copyToClipboard('camera-url')">
+            复制
+          </button>
+
+          <div class="stream-info-title" style="margin-top: 10px">
+            推流状态：
+          </div>
+          <div id="stream-status">未开始</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <div class="control-title">状态信息</div>
+          <div id="status-message" class="status">
+            正在自动开始捕获...窗口将在推流开始后自动最小化
+          </div>
+          <div class="notice">
+            请注意：推流过程中请勿关闭此窗口，窗口会自动最小化。老师可以通过OBS查看您的考试画面。
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-title">设备信息</div>
+          <div id="device-list" class="device-list">正在获取设备信息...</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const { ipcRenderer, desktopCapturer } = require("electron");
+      const fs = require("fs");
+      const path = require("path");
+      const os = require("os");
+
+      // 获取DOM元素
+      const statusMessage = document.getElementById("status-message");
+      const screenVideo = document.getElementById("screen-video");
+      const cameraVideo = document.getElementById("camera-video");
+      const screenUrlElement = document.getElementById("screen-url");
+      const cameraUrlElement = document.getElementById("camera-url");
+      const streamStatusElement = document.getElementById("stream-status");
+      const deviceListElement = document.getElementById("device-list");
+
+      // 初始化页面
+      async function init() {
+        try {
+          // 获取系统信息和推流地址
+          ipcRenderer.send("get-system-info");
+
+          // 页面加载完成后，自动获取本地视频预览
+          await setupLocalPreview();
+
+          // 获取可用的屏幕和摄像头设备
+          await listCaptureDevices();
+
+          // 通知主进程页面已准备好（推流已经在主进程中启动）
+          updateStatus("预览已启动，正在等待推流开始...", "warning");
+        } catch (error) {
+          console.error("初始化错误:", error);
+          updateStatus("初始化失败: " + error.message, "error");
+        }
+      }
+
+      // 列出可用的捕获设备
+      async function listCaptureDevices() {
+        try {
+          // 获取可用的屏幕源
+          const screenSources = await desktopCapturer.getSources({
+            types: ["screen", "window"],
+          });
+
+          // 获取可用的摄像头
+          const cameras = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = cameras.filter(
+            (device) => device.kind === "videoinput"
+          );
+
+          // 显示设备列表
+          let deviceText = "可用屏幕源:\n";
+          screenSources.forEach((source) => {
+            deviceText += `- ${source.name}\n`;
+          });
+
+          deviceText += "\n可用摄像头:\n";
+          if (videoDevices.length > 0) {
+            videoDevices.forEach((device) => {
+              deviceText += `- ${device.label || "未命名设备"}\n`;
+            });
+          } else {
+            deviceText += "- 未检测到摄像头\n";
+          }
+
+          deviceListElement.textContent = deviceText;
+        } catch (error) {
+          console.error("获取设备列表失败:", error);
+          deviceListElement.textContent = "获取设备列表失败: " + error.message;
+        }
+      }
+
+      // 设置本地预览
+      async function setupLocalPreview() {
+        try {
+          // 获取可用的屏幕源
+          const sources = await desktopCapturer.getSources({
+            types: ["screen"],
+          });
+
+          if (sources.length > 0) {
+            // 使用第一个屏幕源
+            const screenSource = sources[0];
+
+            // 获取屏幕流
+            const screenStream = await navigator.mediaDevices.getUserMedia({
+              audio: false,
+              video: {
+                mandatory: {
+                  chromeMediaSource: "desktop",
+                  chromeMediaSourceId: screenSource.id,
+                },
+              },
+            });
+
+            // 显示屏幕预览
+            screenVideo.srcObject = screenStream;
+            screenVideo.play();
+
+            // 尝试获取摄像头
+            try {
+              const cameraStream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: true,
+              });
+
+              // 显示摄像头预览
+              cameraVideo.srcObject = cameraStream;
+              cameraVideo.play();
+              cameraVideo.classList.remove("hidden");
+            } catch (err) {
+              console.warn("获取摄像头失败:", err);
+              cameraVideo.classList.add("hidden");
+            }
+
+            updateStatus("预览已启动", "success");
+          } else {
+            updateStatus("未找到可用的屏幕源", "error");
+          }
+        } catch (error) {
+          console.error("设置本地预览失败:", error);
+          updateStatus("设置预览失败: " + error.message, "error");
+        }
+      }
+
+      // 更新状态信息
+      function updateStatus(message, type = "info") {
+        statusMessage.textContent = message;
+        statusMessage.className = "status";
+        if (type) {
+          statusMessage.classList.add(type);
+        }
+      }
+
+      // 更新流地址信息
+      function updateStreamUrls(streamInfo) {
+        if (streamInfo) {
+          screenUrlElement.textContent =
+            streamInfo.screenUrl || streamInfo.rtmpUrl || "未获取到地址";
+          cameraUrlElement.textContent =
+            streamInfo.cameraUrl || streamInfo.cameraRtmpUrl || "未获取到地址";
+          streamStatusElement.textContent = "推流中...";
+
+          // 如果获取到了流地址，更新状态
+          if (streamInfo.screenUrl || streamInfo.rtmpUrl) {
+            updateStatus("推流已开始，窗口将自动最小化", "success");
+          }
+        }
+      }
+
+      // 复制文本到剪贴板
+      function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.textContent;
+
+        if (navigator.clipboard && text) {
+          navigator.clipboard
+            .writeText(text)
+            .then(() => {
+              alert("复制成功: " + text);
+            })
+            .catch((err) => {
+              console.error("复制失败:", err);
+              alert("复制失败");
+            });
+        }
+      }
+
+      // 接收捕获状态
+      ipcRenderer.on("capture-status", (event, data) => {
+        if (data.success) {
+          updateStatus(data.message, "success");
+        } else {
+          updateStatus(data.message, "error");
+        }
+      });
+
+      // 接收系统信息
+      ipcRenderer.on("system-info", (event, data) => {
+        if (data.streamUrls) {
+          updateStreamUrls(data.streamUrls);
+        }
+      });
+
+      // 初始化页面
+      window.addEventListener("DOMContentLoaded", init);
+
+      // 防止页面关闭
+      window.addEventListener("beforeunload", (event) => {
+        event.returnValue = false;
+      });
+    </script>
+  </body>
+</html>

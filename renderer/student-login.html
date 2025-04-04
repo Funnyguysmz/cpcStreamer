@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>考试监控系统 - 考生登录</title>
+    <style>
+      body {
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        background-color: #f4f5f7;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #333;
+      }
+      .container {
+        background-color: #fff;
+        width: 450px;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #1a73e8;
+      }
+      .form-group {
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 16px;
+        box-sizing: border-box;
+      }
+      input:focus {
+        outline: none;
+        border-color: #1a73e8;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        background-color: #1a73e8;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: #0d62c9;
+      }
+      .error {
+        color: #d93025;
+        font-size: 14px;
+        margin-top: 5px;
+        display: none;
+      }
+      .machine-info {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #5f6368;
+      }
+      .webcam-preview {
+        width: 100%;
+        height: 150px;
+        margin-bottom: 20px;
+        background-color: #f1f3f4;
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+      }
+      .webcam-preview video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .webcam-message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #5f6368;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>考试监控系统</h1>
+      <div class="machine-info" id="machine-info">
+        考试机号: <span id="machine-number-display">--</span>
+      </div>
+
+      <div class="webcam-preview" id="webcam-container">
+        <video id="webcam-video" autoplay></video>
+        <div class="webcam-message" id="webcam-message">正在检测摄像头...</div>
+      </div>
+
+      <div id="student-form">
+        <div class="form-group">
+          <label for="student-id">学号</label>
+          <input type="text" id="student-id" placeholder="请输入学号" />
+          <div class="error" id="student-id-error">请输入有效的学号</div>
+        </div>
+        <div class="form-group">
+          <label for="student-name">姓名</label>
+          <input type="text" id="student-name" placeholder="请输入姓名" />
+          <div class="error" id="student-name-error">请输入姓名</div>
+        </div>
+        <button id="login-button">登录并开始考试</button>
+      </div>
+    </div>
+
+    <script>
+      const { ipcRenderer } = require("electron");
+
+      // 获取DOM元素
+      const studentIdInput = document.getElementById("student-id");
+      const studentNameInput = document.getElementById("student-name");
+      const loginButton = document.getElementById("login-button");
+      const machineNumberDisplay = document.getElementById(
+        "machine-number-display"
+      );
+      const webcamVideo = document.getElementById("webcam-video");
+      const webcamMessage = document.getElementById("webcam-message");
+
+      // 验证表单
+      function validateForm() {
+        let isValid = true;
+
+        // 验证学号
+        if (!studentIdInput.value.trim()) {
+          document.getElementById("student-id-error").style.display = "block";
+          isValid = false;
+        } else {
+          document.getElementById("student-id-error").style.display = "none";
+        }
+
+        // 验证姓名
+        if (!studentNameInput.value.trim()) {
+          document.getElementById("student-name-error").style.display = "block";
+          isValid = false;
+        } else {
+          document.getElementById("student-name-error").style.display = "none";
+        }
+
+        return isValid;
+      }
+
+      // 初始化摄像头
+      async function initWebcam() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
+          webcamVideo.srcObject = stream;
+          webcamMessage.style.display = "none";
+          return stream;
+        } catch (error) {
+          console.error("无法访问摄像头:", error);
+          webcamMessage.textContent =
+            "无法访问摄像头，请确保摄像头已连接并授权使用";
+          return null;
+        }
+      }
+
+      // 登录按钮点击事件
+      loginButton.addEventListener("click", () => {
+        if (validateForm()) {
+          // 发送学生登录请求到主进程
+          ipcRenderer.send("student-login", {
+            studentId: studentIdInput.value.trim(),
+            studentName: studentNameInput.value.trim(),
+          });
+
+          // 禁用按钮，显示加载状态
+          loginButton.disabled = true;
+          loginButton.innerText = "正在登录...";
+        }
+      });
+
+      // 接收主进程的登录响应
+      ipcRenderer.on("student-login-response", (event, data) => {
+        loginButton.disabled = false;
+        loginButton.innerText = "登录并开始考试";
+
+        if (data.success) {
+          console.log("登录成功");
+          // 登录成功后主进程会自动最小化到托盘
+        } else {
+          alert(`登录失败: ${data.message || "服务器无响应"}`);
+        }
+      });
+
+      // 页面加载时获取机器信息并初始化摄像头
+      window.addEventListener("DOMContentLoaded", () => {
+        // 从主进程获取机器号
+        ipcRenderer.send("get-machine-number");
+
+        // 初始化摄像头
+        initWebcam();
+      });
+
+      // 接收机器号
+      ipcRenderer.on("machine-number", (event, number) => {
+        machineNumberDisplay.textContent = number || "--";
+      });
+
+      // 当页面关闭时停止摄像头
+      window.addEventListener("beforeunload", () => {
+        if (webcamVideo.srcObject) {
+          webcamVideo.srcObject.getTracks().forEach((track) => track.stop());
+        }
+      });
+    </script>
+  </body>
+</html>
