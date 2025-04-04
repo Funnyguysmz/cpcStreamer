@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>考试监控系统 - 监考员控制台</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background-color: #f5f5f5;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      header {
+        background-color: #1a73e8;
+        color: white;
+        padding: 15px 0;
+        margin-bottom: 20px;
+      }
+      header .container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      h1 {
+        font-size: 1.8rem;
+      }
+      .main-content {
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        gap: 20px;
+      }
+      .card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+      .card-header {
+        background-color: #f0f0f0;
+        padding: 15px;
+        font-weight: bold;
+        border-bottom: 1px solid #ddd;
+      }
+      .card-body {
+        padding: 15px;
+      }
+      .client-list {
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .client-item {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+      .client-item:hover {
+        background-color: #f8f8f8;
+      }
+      .client-item.selected {
+        background-color: #e3f2fd;
+        border-left: 3px solid #1a73e8;
+      }
+      .client-item.offline {
+        opacity: 0.5;
+      }
+      .client-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .client-name {
+        font-weight: bold;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        color: white;
+        background-color: #4caf50;
+      }
+      .status-badge.offline {
+        background-color: #9e9e9e;
+      }
+      .client-details {
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 5px;
+      }
+      .stream-container {
+        aspect-ratio: 16 / 9;
+        background-color: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        font-size: 1.2rem;
+      }
+      .stream-placeholder {
+        text-align: center;
+        padding: 20px;
+      }
+      .control-panel {
+        margin-top: 15px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+      }
+      input[type="text"],
+      input[type="password"],
+      textarea {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      button {
+        background-color: #1a73e8;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.2s;
+      }
+      button:hover {
+        background-color: #0d62d1;
+      }
+      button:disabled {
+        background-color: #9e9e9e;
+        cursor: not-allowed;
+      }
+      .notification-list {
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .notification-item {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        font-size: 0.9rem;
+      }
+      .notification-item.info {
+        border-left: 3px solid #1a73e8;
+      }
+      .notification-item.warning {
+        border-left: 3px solid #ff9800;
+      }
+      .notification-item.error {
+        border-left: 3px solid #f44336;
+      }
+      .hidden {
+        display: none;
+      }
+      .connection-status {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        color: white;
+        background-color: #4caf50;
+      }
+      .connection-status.disconnected {
+        background-color: #f44336;
+      }
+      .alert {
+        padding: 10px 15px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        color: #856404;
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+      }
+      .alert.error {
+        color: #721c24;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+      }
+      .alert.success {
+        color: #155724;
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1>考试监控系统 - 监考员控制台</h1>
+        <div class="connection-status" id="connection-status">已连接</div>
+      </div>
+    </header>
+
+    <div class="container">
+      <div id="alert-container"></div>
+
+      <div class="main-content">
+        <div class="sidebar">
+          <div class="card">
+            <div class="card-header">考生列表</div>
+            <div class="card-body">
+              <div class="client-list" id="client-list">
+                <div class="stream-placeholder">等待考生连接...</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">发送通知</div>
+            <div class="card-body">
+              <div class="form-group">
+                <label for="notification-target">目标机器号</label>
+                <input
+                  type="text"
+                  id="notification-target"
+                  placeholder="输入机器号或留空发送给所有人"
+                />
+              </div>
+              <div class="form-group">
+                <label for="notification-message">通知内容</label>
+                <textarea
+                  id="notification-message"
+                  rows="3"
+                  placeholder="输入通知内容"
+                ></textarea>
+              </div>
+              <div class="form-group">
+                <label>通知级别</label>
+                <div>
+                  <label style="display: inline-block; margin-right: 10px">
+                    <input
+                      type="radio"
+                      name="notification-level"
+                      value="info"
+                      checked
+                    />
+                    信息
+                  </label>
+                  <label style="display: inline-block; margin-right: 10px">
+                    <input
+                      type="radio"
+                      name="notification-level"
+                      value="warning"
+                    />
+                    警告
+                  </label>
+                  <label style="display: inline-block">
+                    <input
+                      type="radio"
+                      name="notification-level"
+                      value="error"
+                    />
+                    错误
+                  </label>
+                </div>
+              </div>
+              <button id="send-notification-btn">发送通知</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="card">
+            <div class="card-header">
+              <span id="stream-title">直播预览</span>
+            </div>
+            <div class="card-body" style="padding: 0">
+              <div class="stream-container" id="stream-container">
+                <div class="stream-placeholder" id="stream-placeholder">
+                  请从左侧选择一个考生进行查看
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">控制面板</div>
+            <div class="card-body">
+              <div class="form-group">
+                <label for="output-url">输出流地址 (OBS源)</label>
+                <input
+                  type="text"
+                  id="output-url"
+                  value="rtmp://localhost:1935/live/output"
+                  readonly
+                />
+              </div>
+              <div class="form-group">
+                <label for="admin-password">客户端管理密码</label>
+                <input type="password" id="admin-password" value="admin123" />
+                <small style="display: block; margin-top: 5px; color: #666">
+                  此密码用于客户端修改配置时的验证，非API认证用途
+                </small>
+              </div>
+              <div class="form-group">
+                <label for="current-stream">当前选中的流</label>
+                <input type="text" id="current-stream" readonly />
+              </div>
+              <button id="refresh-btn">刷新客户端列表</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">通知历史</div>
+            <div class="card-body">
+              <div class="notification-list" id="notification-list">
+                <div class="stream-placeholder">暂无通知</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 全局变量
+      let socket = null;
+      let clients = {};
+      let selectedStream = "";
+      let outputUrl = "rtmp://localhost:1935/live/output";
+      let notifications = [];
+
+      // DOM元素
+      const clientListEl = document.getElementById("client-list");
+      const streamContainerEl = document.getElementById("stream-container");
+      const streamPlaceholderEl = document.getElementById("stream-placeholder");
+      const streamTitleEl = document.getElementById("stream-title");
+      const currentStreamEl = document.getElementById("current-stream");
+      const outputUrlEl = document.getElementById("output-url");
+      const adminPasswordEl = document.getElementById("admin-password");
+      const connectionStatusEl = document.getElementById("connection-status");
+      const notificationTargetEl = document.getElementById(
+        "notification-target"
+      );
+      const notificationMessageEl = document.getElementById(
+        "notification-message"
+      );
+      const notificationListEl = document.getElementById("notification-list");
+      const sendNotificationBtn = document.getElementById(
+        "send-notification-btn"
+      );
+      const refreshBtn = document.getElementById("refresh-btn");
+      const alertContainerEl = document.getElementById("alert-container");
+
+      // 初始化WebSocket连接
+      function initWebSocket() {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = function () {
+          console.log("WebSocket连接已建立");
+          connectionStatusEl.textContent = "已连接";
+          connectionStatusEl.classList.remove("disconnected");
+
+          // WebSocket连接成功后获取初始数据
+          fetchClients();
+          fetchNotifications();
+        };
+
+        socket.onmessage = function (event) {
+          const message = JSON.parse(event.data);
+          handleWebSocketMessage(message);
+        };
+
+        socket.onclose = function () {
+          console.log("WebSocket连接已关闭");
+          connectionStatusEl.textContent = "已断开";
+          connectionStatusEl.classList.add("disconnected");
+
+          // 尝试在1秒后重新连接
+          setTimeout(initWebSocket, 1000);
+        };
+
+        socket.onerror = function (error) {
+          console.error("WebSocket错误:", error);
+          connectionStatusEl.textContent = "连接错误";
+          connectionStatusEl.classList.add("disconnected");
+        };
+      }
+
+      // 处理WebSocket消息
+      function handleWebSocketMessage(message) {
+        console.log("收到WebSocket消息:", message);
+
+        switch (message.type) {
+          case "init":
+            // 初始化状态
+            if (message.data) {
+              clients = message.data.clients || {};
+              selectedStream = message.data.selectedStream || "";
+              outputUrl = message.data.outputUrl || outputUrlEl.value;
+
+              updateClientList();
+              updateStreamContainer();
+              outputUrlEl.value = outputUrl;
+              currentStreamEl.value = selectedStream;
+            }
+            break;
+
+          case "clients_update":
+            // 客户端列表更新，重新获取所有客户端
+            fetchClients();
+            break;
+
+          case "stream_selection_change":
+            // 选中的流变更
+            selectedStream = message.data || "";
+            currentStreamEl.value = selectedStream;
+            updateStreamContainer();
+            break;
+
+          case "output_url_change":
+            // 输出URL变更
+            outputUrl = message.data || outputUrlEl.value;
+            outputUrlEl.value = outputUrl;
+            break;
+
+          case "notification":
+            // 新通知
+            if (message.data) {
+              notifications.push(message.data);
+              updateNotificationList();
+            }
+            break;
+        }
+      }
+
+      // 获取所有客户端
+      function fetchClients() {
+        fetch("/api/clients")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "success") {
+              clients = data.clients || {};
+              updateClientList();
+            }
+          })
+          .catch((error) => {
+            console.error("获取客户端列表失败:", error);
+            showAlert("获取客户端列表失败", "error");
+          });
+      }
+
+      // 更新客户端列表显示
+      function updateClientList() {
+        // 清空当前列表
+        clientListEl.innerHTML = "";
+
+        const clientIds = Object.keys(clients);
+
+        if (clientIds.length === 0) {
+          clientListEl.innerHTML =
+            '<div class="stream-placeholder">等待考生连接...</div>';
+          return;
+        }
+
+        // 按机器号排序
+        clientIds.sort((a, b) => {
+          const numA = parseInt(a.replace(/\D/g, "")) || 0;
+          const numB = parseInt(b.replace(/\D/g, "")) || 0;
+          return numA - numB;
+        });
+
+        // 创建每个客户端项
+        clientIds.forEach((clientId) => {
+          const client = clients[clientId];
+
+          const clientEl = document.createElement("div");
+          clientEl.className = `client-item ${
+            client.IsOnline ? "" : "offline"
+          } ${selectedStream === clientId ? "selected" : ""}`;
+          clientEl.dataset.id = clientId;
+
+          clientEl.innerHTML = `
+                    <div class="client-info">
+                        <div class="client-name">机器 ${
+                          client.MachineNumber
+                        } (${client.StudentInfo.StudentName || "未登录"})</div>
+                        <div class="status-badge ${
+                          client.IsOnline ? "" : "offline"
+                        }">${client.IsOnline ? "在线" : "离线"}</div>
+                    </div>
+                    <div class="client-details">
+                        <div>学号: ${
+                          client.StudentInfo.StudentId || "未知"
+                        }</div>
+                        <div>IP: ${client.SystemInfo.IPAddress || "未知"}</div>
+                    </div>
+                `;
+
+          // 点击选择流
+          clientEl.addEventListener("click", () => {
+            if (!client.IsOnline) {
+              showAlert("该客户端已离线，无法选择", "error");
+              return;
+            }
+
+            selectStream(clientId);
+          });
+
+          clientListEl.appendChild(clientEl);
+        });
+      }
+
+      // 选择流
+      function selectStream(clientId) {
+        if (!clientId || !clients[clientId]) return;
+
+        const client = clients[clientId];
+        if (!client.IsOnline) {
+          showAlert("该客户端已离线，无法选择", "error");
+          return;
+        }
+
+        fetch("/api/select-stream", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            machineNumber: clientId,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "success") {
+              selectedStream = clientId;
+              currentStreamEl.value = clientId;
+              updateStreamContainer();
+              showAlert(`已选择机器 ${clientId} 的流`, "success");
+            } else {
+              showAlert(`选择流失败: ${data.message}`, "error");
+            }
+          })
+          .catch((error) => {
+            console.error("选择流失败:", error);
+            showAlert("选择流失败，请检查网络连接", "error");
+          });
+      }
+
+      // 更新流显示容器
+      function updateStreamContainer() {
+        if (!selectedStream || !clients[selectedStream]) {
+          streamPlaceholderEl.textContent = "请从左侧选择一个考生进行查看";
+          streamPlaceholderEl.style.display = "block";
+          streamTitleEl.textContent = "直播预览";
+          return;
+        }
+
+        const client = clients[selectedStream];
+
+        if (!client.IsOnline) {
+          streamPlaceholderEl.textContent = `机器 ${selectedStream} 已离线，无法查看流`;
+          streamPlaceholderEl.style.display = "block";
+          streamTitleEl.textContent = `直播预览 - 机器 ${selectedStream} (离线)`;
+          return;
+        }
+
+        streamTitleEl.textContent = `直播预览 - 机器 ${selectedStream} (${
+          client.StudentInfo.StudentName || "未登录"
+        })`;
+
+        // 检查是否是HLS流
+        if (client.RtmpUrl && client.RtmpUrl.includes("m3u8")) {
+          // 使用video.js或hls.js播放HLS流
+          streamPlaceholderEl.innerHTML = `
+                    <div>RTMP流地址: ${client.RtmpUrl}</div>
+                    <div style="margin-top: 10px;">
+                        <small>注意: 此页面不支持直接预览RTMP流，请使用OBS或VLC等工具查看。</small>
+                    </div>
+                `;
+          streamPlaceholderEl.style.display = "block";
+        } else {
+          // 显示RTMP地址
+          streamPlaceholderEl.innerHTML = `
+                    <div>RTMP流地址: ${client.RtmpUrl}</div>
+                    <div style="margin-top: 10px;">
+                        <small>注意: 此页面不支持直接预览RTMP流，请使用OBS或VLC等工具查看。</small>
+                    </div>
+                `;
+          streamPlaceholderEl.style.display = "block";
+        }
+      }
+
+      // 发送通知
+      function sendNotification() {
+        const target = notificationTargetEl.value.trim();
+        const message = notificationMessageEl.value.trim();
+        const level = document.querySelector(
+          'input[name="notification-level"]:checked'
+        ).value;
+
+        if (!message) {
+          showAlert("请输入通知内容", "error");
+          return;
+        }
+
+        fetch("/api/send-notification", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            machineNumber: target,
+            message: message,
+            level: level,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "success") {
+              showAlert("通知已发送", "success");
+              notificationMessageEl.value = "";
+            } else {
+              showAlert(`发送通知失败: ${data.message}`, "error");
+            }
+          })
+          .catch((error) => {
+            console.error("发送通知失败:", error);
+            showAlert("发送通知失败，请检查网络连接", "error");
+          });
+      }
+
+      // 获取通知历史
+      function fetchNotifications() {
+        fetch("/api/notifications")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "success") {
+              notifications = data.data || [];
+              updateNotificationList();
+            }
+          })
+          .catch((error) => {
+            console.error("获取通知历史失败:", error);
+          });
+      }
+
+      // 更新通知列表显示
+      function updateNotificationList() {
+        notificationListEl.innerHTML = "";
+
+        if (notifications.length === 0) {
+          notificationListEl.innerHTML =
+            '<div class="stream-placeholder">暂无通知</div>';
+          return;
+        }
+
+        // 倒序显示，最新的在最上面
+        notifications
+          .slice()
+          .reverse()
+          .forEach((notification) => {
+            const notificationEl = document.createElement("div");
+            notificationEl.className = `notification-item ${
+              notification.Level || "info"
+            }`;
+
+            notificationEl.innerHTML = `
+                    <div><strong>目标: ${
+                      notification.MachineNumber || "所有人"
+                    }</strong></div>
+                    <div>${notification.Message}</div>
+                `;
+
+            notificationListEl.appendChild(notificationEl);
+          });
+      }
+
+      // 显示提示信息
+      function showAlert(message, type = "info") {
+        const alertEl = document.createElement("div");
+        alertEl.className = `alert ${type}`;
+        alertEl.textContent = message;
+
+        alertContainerEl.appendChild(alertEl);
+
+        // 5秒后自动消失
+        setTimeout(() => {
+          alertContainerEl.removeChild(alertEl);
+        }, 5000);
+      }
+
+      // 事件监听
+      document.addEventListener("DOMContentLoaded", () => {
+        // 确保密码字段初始化为默认值
+        adminPasswordEl.value = "admin123";
+
+        // 初始化WebSocket连接
+        initWebSocket();
+
+        // 发送通知按钮事件
+        sendNotificationBtn.addEventListener("click", sendNotification);
+
+        // 刷新按钮事件
+        refreshBtn.addEventListener("click", () => {
+          fetchClients();
+          fetchNotifications();
+          showAlert("已刷新数据", "success");
+        });
+      });
+    </script>
+  </body>
+</html>

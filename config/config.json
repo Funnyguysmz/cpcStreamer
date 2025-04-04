@@ -1,0 +1,10 @@
+{
+  "serverPort": 8080,
+  "defaultPassword": "admin123",
+  "outputUrl": "rtmp://localhost:1935/live/output",
+  "obs": {
+    "enabled": false,
+    "webSocketUrl": "ws://localhost:4455",
+    "password": ""
+  }
+}
