@@ -41,7 +41,7 @@ func RegisterRoutes(r *gin.Engine, cfg *config.AppConfig) {
 
 	// API分组
 	api := r.Group("/api")
-	
+
 	// 管理员控制台访问的API不需要认证
 	api.GET("/clients", HandleGetClients(clientService))
 	api.GET("/notifications", HandleGetNotifications(notificationService))
@@ -52,12 +52,13 @@ func RegisterRoutes(r *gin.Engine, cfg *config.AppConfig) {
 	api.POST("/send-notification", HandleSendNotification(notificationService))
 	api.GET("/obs/config", HandleGetObsConfig(obsService))
 	api.POST("/obs/config", HandleSetObsConfig(obsService))
-	
-	// 客户端访问的API需要验证请求体内的密码
+
+	// 客户端访问的API
 	api.POST("/report-stream", HandleReportStream(clientService))
 	api.POST("/report-system-info", HandleReportSystemInfo(clientService))
-	api.POST("/client-notifications", HandleClientNotifications(notificationService))
-	
+	// 修改为 GET 请求，并通过查询参数认证
+	api.GET("/client-notifications", HandleClientNotifications(notificationService))
+
 	// 健康检查接口
 	api.GET("/health-check", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "服务器运行正常"})
@@ -75,7 +76,6 @@ func HandleReportStream(service *services.ClientService) gin.HandlerFunc {
 
 		// 验证请求体内的密码
 		if req.Password != config.GetConfig().DefaultPassword {
-			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "密码错误"})
 			return
 		}
 
@@ -152,8 +152,8 @@ func HandleGetSelectedStream(service *services.StreamService) gin.HandlerFunc {
 			"status": "success",
 			"data": map[string]interface{}{ // 返回流地址
 				"machineNumber": client.MachineNumber,
-				"screenUrl":    client.RtmpUrl,
-				"cameraUrl":    client.CameraUrl,
+				"screenUrl":     client.RtmpUrl,
+				"cameraUrl":     client.CameraUrl,
 			},
 		})
 	}
@@ -250,23 +250,26 @@ func HandleWebSocket(wsService *services.WebSocketService) gin.HandlerFunc {
 	}
 }
 
-// 处理客户端POST请求获取通知
+// 处理客户端GET请求获取通知 (修改为GET，从Query参数获取)
 func HandleClientNotifications(service *services.NotificationService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req models.ClientNotificationRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "请求格式错误: " + err.Error()})
+		// 从查询参数获取 machineNumber 和 password
+		machineNumber := c.Query("machineNumber")
+		password := c.Query("password")
+
+		if machineNumber == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "缺少 machineNumber 查询参数"})
 			return
 		}
 
-		// 验证请求体内的密码
-		if req.Password != config.GetConfig().DefaultPassword {
+		// 验证查询参数中的密码
+		if password != config.GetConfig().DefaultPassword {
 			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "密码错误"})
 			return
 		}
 
 		// 获取指定客户端的通知
-		notifications := service.GetNotificationsForClient(req.MachineNumber)
+		notifications := service.GetNotificationsForClient(machineNumber)
 		c.JSON(http.StatusOK, gin.H{"status": "success", "data": notifications})
 	}
-} 
+}
