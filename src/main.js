@@ -6,6 +6,7 @@ const {
   Menu,
   dialog,
   globalShortcut,
+  desktopCapturer
 } = require("electron");
 const path = require("path");
 const url = require("url");
@@ -124,7 +125,12 @@ function createTray() {
       console.warn("使用空图标创建系统托盘");
     }
   } else {
-    tray = new Tray(iconPath);
+    tray = new Tray(path.join(__dirname, "assets", "icons", "icon.png"));
+    if (!fs.existsSync(path.join(__dirname, "assets", "icons", "icon.png"))) {
+      // 如果图标不存在，就使用空图标
+      tray = new Tray();
+      console.warn("使用空图标创建系统托盘");
+    }
   }
 
   const contextMenu = Menu.buildFromTemplate([
@@ -428,6 +434,20 @@ function handleServerNotifications(notifications) {
     });
   });
 }
+
+ipcMain.handle('get-desktop-sources', async (event, options) => {
+  console.log('IPC: Received request for get-desktop-sources with options:', options);
+  try {
+    const sources = await desktopCapturer.getSources(options);
+    console.log('IPC: Returning sources:', sources.map(s => s.name));
+    return sources;
+  } catch (error) {
+    console.error('IPC: Error getting desktop sources:', error);
+    // 将错误信息传递给渲染进程
+    // 注意：直接传递 Error 对象可能效果不好，传递错误消息字符串
+    throw new Error(`Failed to get desktop sources: ${error.message}`);
+  }
+});
 
 // 当应用就绪
 app.whenReady().then(() => {

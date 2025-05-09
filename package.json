@@ -19,13 +19,14 @@
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^22.0.0",
+    "electron": "^22.3.27",
     "electron-builder": "^23.6.0"
   },
   "dependencies": {
     "axios": "^0.27.2",
     "crypto-js": "^4.1.1",
     "electron-store": "^8.1.0",
+    "node-fetch": "^2.7.0",
     "node-media-server": "^2.4.9",
     "uuid": "^9.0.0"
   },

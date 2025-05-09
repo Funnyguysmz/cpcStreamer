@@ -234,22 +234,27 @@ function sendStreamUrlToServer(streamUrls) {
   // 将localhost替换为本机实际IP，使服务器可以访问
   const publicStreamUrls = {
     rtmpUrl: streamUrls.rtmpUrl.replace("localhost", localIp),
-    httpFlvUrl: streamUrls.httpFlvUrl.replace("localhost", localIp),
-    hlsUrl: streamUrls.hlsUrl.replace("localhost", localIp),
-    dashUrl: streamUrls.dashUrl.replace("localhost", localIp),
+    httpFlvUrl: streamUrls.httpFlvUrl?.replace("localhost", localIp),
+    hlsUrl: streamUrls.hlsUrl?.replace("localhost", localIp),
+    dashUrl: streamUrls.dashUrl?.replace("localhost", localIp),
   };
 
   console.log("发送给服务器的公网流地址:", publicStreamUrls);
 
-  // 实际发送请求 - 修正API路径
+  // 实际发送请求 - 修正API路径及请求格式
   axios
     .post(`http://${serverConfig.serverIp}:8080/api/report-stream`, {
       machineNumber: serverConfig.machineNumber,
-      streamUrls: publicStreamUrls,
+      rtmpUrl: publicStreamUrls.rtmpUrl,
+      cameraUrl: publicStreamUrls.httpFlvUrl || publicStreamUrls.hlsUrl || "", // 优先使用HTTP-FLV或HLS流作为摄像头流
       password: serverConfig.serverPassword,
       systemInfo: {
         macAddress: getMacAddress(),
         ipAddress: localIp,
+      },
+      studentInfo: {
+        studentId: "", // 可以在这里添加学生ID
+        studentName: "", // 可以在这里添加学生姓名
       },
     })
     .then((response) => {
@@ -279,7 +284,16 @@ function startSystemMonitoring() {
         osVersion: os.release(),
         cpuUsage: process.cpuUsage(),
         memoryUsage: process.memoryUsage(),
+        // 添加其他系统信息字段以匹配服务端的模型
+        arch: os.arch(),
+        memoryTotal: `${Math.round(os.totalmem() / (1024 * 1024))}MB`,
+        memoryFree: `${Math.round(os.freemem() / (1024 * 1024))}MB`,
       },
+      studentInfo: {
+        studentId: "",
+        studentName: "",
+      },
+      timestamp: new Date().getTime(),
     };
 
     // 修正URL格式
@@ -305,14 +319,14 @@ function checkServerNotifications() {
       return;
     }
 
-    // 修正URL格式
+    // 修正URL格式，使用正确的API路径和请求方式
     axios
       .get(
-        `http://${serverConfig.serverIp}:8080/api/notifications?machineNumber=${serverConfig.machineNumber}&password=${serverConfig.serverPassword}`
+        `http://${serverConfig.serverIp}:8080/api/client-notifications?machineNumber=${serverConfig.machineNumber}&password=${serverConfig.serverPassword}`
       )
       .then((response) => {
-        if (response.data.status === "success" && response.data.notifications) {
-          processNotifications(response.data.notifications);
+        if (response.data.status === "success" && response.data.data) {
+          processNotifications(response.data.data);
         }
       })
       .catch((error) => {
@@ -993,12 +1007,12 @@ function sendStreamInfoToServer(streamInfo) {
   const localIp = getIpAddress();
   const macAddress = getMacAddress();
 
-  // 构建要发送的数据
+  // 构建要发送的数据 (确保与服务端 StreamRequest 结构保持一致)
   const dataToSend = {
     machineNumber: serverConfig.machineNumber,
-    streamKey: streamInfo.streamKey,
-    rtmpUrl: streamInfo.rtmpUrl,
-    cameraUrl: streamInfo.cameraUrl,
+    streamKey: streamInfo.streamKey || "",
+    rtmpUrl: streamInfo.rtmpUrl || "",
+    cameraUrl: streamInfo.cameraUrl || "",
     password: serverConfig.serverPassword,
     systemInfo: {
       macAddress: macAddress,
@@ -1006,11 +1020,17 @@ function sendStreamInfoToServer(streamInfo) {
       hostName: os.hostname(),
       platform: os.platform(),
       osVersion: os.release(),
+      arch: os.arch(),
+      memoryTotal: `${Math.round(os.totalmem() / (1024 * 1024))}MB`,
+      memoryFree: `${Math.round(os.freemem() / (1024 * 1024))}MB`,
     },
-    studentInfo: streamInfo.studentInfo,
+    studentInfo: {
+      studentId: streamInfo.studentInfo?.studentId || "",
+      studentName: streamInfo.studentInfo?.studentName || "",
+    },
   };
 
-  // 发送请求到服务器 - 修正API路径
+  // 发送请求到服务器
   axios
     .post(`http://${serverConfig.serverIp}:8080/api/report-stream`, dataToSend)
     .then((response) => {
@@ -1023,6 +1043,12 @@ function sendStreamInfoToServer(streamInfo) {
 
 // 添加处理通知的函数
 function processNotifications(notifications) {
+  if (!Array.isArray(notifications) || notifications.length === 0) {
+    return;
+  }
+  
+  console.log(`收到 ${notifications.length} 条通知:`, notifications);
+  
   // 仅处理针对本机的通知或发给所有人的通知
   const machineNumber = serverConfig.machineNumber;
   const relevantNotifications = notifications.filter(

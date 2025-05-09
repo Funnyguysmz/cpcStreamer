@@ -1,3 +1,4 @@
+const fetch = require('node-fetch');
 const axios = require("axios");
 const config = require("../config/config");
 const systemUtils = require("../utils/system-utils");
@@ -40,9 +41,9 @@ class ApiService {
       // 按照服务端要求的格式组织数据
       const requestData = {
         machineNumber: machineNumber,
-        password: serverPassword,
-        rtmpUrl: streamInfo.screenUrl || streamInfo.rtmpUrl, // 屏幕流地址
-        cameraUrl: streamInfo.cameraUrl || streamInfo.cameraRtmpUrl, // 摄像头流地址
+        password: serverPassword, // 密码放在请求体中
+        rtmpUrl: streamInfo.screenUrl || streamInfo.rtmpUrl,
+        cameraUrl: streamInfo.cameraUrl || streamInfo.cameraRtmpUrl,
         streamKey: streamInfo.streamKey || "",
         studentInfo: {
           studentId: studentId || "",
@@ -56,7 +57,6 @@ class ApiService {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Auth-Password": serverPassword, // 添加认证头
         },
         body: JSON.stringify(requestData),
       });
@@ -101,7 +101,7 @@ class ApiService {
       // 按照服务端要求的格式组织数据
       const requestData = {
         machineNumber: machineNumber,
-        password: serverPassword,
+        password: serverPassword, // 密码放在请求体中
         systemInfo: {
           ipAddress: systemInfo.ipAddress,
           macAddress: systemInfo.macAddress,
@@ -127,7 +127,6 @@ class ApiService {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Auth-Password": serverPassword, // 添加认证头
         },
         body: JSON.stringify(requestData),
       });
@@ -149,7 +148,7 @@ class ApiService {
   }
 
   /**
-   * 从服务器获取通知
+   * 从服务器获取通知 (修改为GET，密码通过Query参数传递)
    * @returns {Promise} 包含通知数组的Promise
    */
   async getNotifications() {
@@ -162,14 +161,16 @@ class ApiService {
         return [];
       }
 
-      const url = `http://${serverIp}:${serverPort}/api/client-notifications?machineNumber=${machineNumber}`;
+      // 将 machineNumber 和 password 都作为查询参数
+      const url = `http://${serverIp}:${serverPort}/api/client-notifications?machineNumber=${encodeURIComponent(machineNumber)}&password=${encodeURIComponent(serverPassword)}`;
       console.log(`从服务器获取通知：${url}`);
 
       const response = await fetch(url, {
         method: "GET",
-        headers: {
-          "X-Auth-Password": serverPassword, // 添加认证头
-        },
+        // 不再需要 X-Auth-Password 请求头
+        // headers: {
+        //   "X-Auth-Password": serverPassword,
+        // },
       });
 
       if (!response.ok) {
@@ -288,15 +289,14 @@ class ApiService {
         const url = `http://${serverIp}:${port}/api/health-check`;
         console.log(`尝试连接: ${url}`);
 
-        const response = await fetch(url, {
-          method: "GET",
+        const response = await axios.get(url, {
+          timeout: 5000, // 设置超时
           headers: {
             "Content-Type": "application/json",
-          },
-          timeout: 5000, // 设置超时
+          }
         });
 
-        if (response.ok) {
+        if (response.status === 200) {
           console.log(`成功连接到端口 ${port}`);
           return { success: true, port: port };
         }
