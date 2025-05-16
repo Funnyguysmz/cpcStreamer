@@ -1,0 +1,392 @@
+openapi: 3.0.3
+info:
+  title: 考试监控服务端API
+  version: 1.0.0
+  description: |-
+    本文档用于Apifox导入，涵盖所有服务端API接口。
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/clients:
+    get:
+      summary: 获取所有客户端信息
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientsResponse"
+  /api/notifications:
+    get:
+      summary: 获取通知历史
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationsResponse"
+  /api/select-stream:
+    post:
+      summary: 选择流
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelectStreamRequest"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectStreamResponse"
+  /api/selected-stream:
+    get:
+      summary: 获取当前选中的流
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectedStreamResponse"
+  /api/set-output-url:
+    post:
+      summary: 设置输出流地址
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetOutputUrlRequest"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultResponse"
+  /api/output-url:
+    get:
+      summary: 获取输出流地址
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutputUrlResponse"
+  /api/send-notification:
+    post:
+      summary: 发送通知
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendNotificationRequest"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultResponse"
+  /api/obs/config:
+    get:
+      summary: 获取OBS配置
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObsConfigResponse"
+    post:
+      summary: 设置OBS配置
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ObsConfigRequest"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultResponse"
+  /api/report-stream:
+    post:
+      summary: 客户端上报流信息
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StreamRequest"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultResponse"
+  /api/report-system-info:
+    post:
+      summary: 客户端上报系统信息
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SystemInfoReport"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultResponse"
+  /api/client-notifications:
+    get:
+      summary: 客户端获取通知
+      parameters:
+        - in: query
+          name: machineNumber
+          schema:
+            type: string
+          required: true
+          description: 机器号
+        - in: query
+          name: password
+          schema:
+            type: string
+          required: true
+          description: 密码
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationsResponse"
+  /api/health-check:
+    get:
+      summary: 健康检查
+      responses:
+        "200":
+          description: 服务器运行正常
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthCheckResponse"
+components:
+  schemas:
+    SysInfo:
+      type: object
+      properties:
+        macAddress:
+          type: string
+        ipAddress:
+          type: string
+        hostName:
+          type: string
+        platform:
+          type: string
+        osVersion:
+          type: string
+        arch:
+          type: string
+        cpuInfo:
+          type: string
+        memoryTotal:
+          type: string
+        memoryFree:
+          type: string
+    Student:
+      type: object
+      properties:
+        studentId:
+          type: string
+        studentName:
+          type: string
+    ClientInfo:
+      type: object
+      properties:
+        machineNumber:
+          type: string
+        streamKey:
+          type: string
+        rtmpUrl:
+          type: string
+        cameraUrl:
+          type: string
+        systemInfo:
+          $ref: "#/components/schemas/SysInfo"
+        studentInfo:
+          $ref: "#/components/schemas/Student"
+        lastUpdate:
+          type: string
+          format: date-time
+        isOnline:
+          type: boolean
+    StreamRequest:
+      type: object
+      properties:
+        machineNumber:
+          type: string
+        streamKey:
+          type: string
+        rtmpUrl:
+          type: string
+        cameraUrl:
+          type: string
+        password:
+          type: string
+        systemInfo:
+          $ref: "#/components/schemas/SysInfo"
+        studentInfo:
+          $ref: "#/components/schemas/Student"
+    SystemInfoReport:
+      type: object
+      properties:
+        machineNumber:
+          type: string
+        password:
+          type: string
+        systemInfo:
+          $ref: "#/components/schemas/SysInfo"
+    Notification:
+      type: object
+      properties:
+        machineNumber:
+          type: string
+        message:
+          type: string
+        level:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    SelectStreamRequest:
+      type: object
+      properties:
+        machineNumber:
+          type: string
+        password:
+          type: string
+    SetOutputUrlRequest:
+      type: object
+      properties:
+        outputUrl:
+          type: string
+        password:
+          type: string
+    SendNotificationRequest:
+      type: object
+      properties:
+        machineNumber:
+          type: string
+        message:
+          type: string
+        level:
+          type: string
+        password:
+          type: string
+    ObsConfigRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        webSocketUrl:
+          type: string
+        password:
+          type: string
+        adminPassword:
+          type: string
+    ClientsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClientInfo"
+    NotificationsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+    SelectStreamResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            screenUrl:
+              type: string
+            cameraUrl:
+              type: string
+    SelectedStreamResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: object
+          properties:
+            machineNumber:
+              type: string
+            screenUrl:
+              type: string
+            cameraUrl:
+              type: string
+        message:
+          type: string
+    OutputUrlResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: string
+    ObsConfigResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            webSocketUrl:
+              type: string
+    DefaultResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+    HealthCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string

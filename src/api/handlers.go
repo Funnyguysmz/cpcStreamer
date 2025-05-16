@@ -76,11 +76,16 @@ func HandleReportStream(service *services.ClientService) gin.HandlerFunc {
 
 		// 验证请求体内的密码
 		if req.Password != config.GetConfig().DefaultPassword {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "密码错误"})
 			return
 		}
 
 		service.UpdateClient(&req)
-		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "流地址已更新"})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"message": "流地址已更新",
+			"data": req,
+		})
 	}
 }
 
@@ -103,7 +108,11 @@ func HandleReportSystemInfo(service *services.ClientService) gin.HandlerFunc {
 			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "系统信息已更新"})
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"message": "系统信息已更新",
+			"data": req,
+		})
 	}
 }
 
@@ -253,7 +262,6 @@ func HandleWebSocket(wsService *services.WebSocketService) gin.HandlerFunc {
 // 处理客户端GET请求获取通知 (修改为GET，从Query参数获取)
 func HandleClientNotifications(service *services.NotificationService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 从查询参数获取 machineNumber 和 password
 		machineNumber := c.Query("machineNumber")
 		password := c.Query("password")
 
@@ -262,14 +270,21 @@ func HandleClientNotifications(service *services.NotificationService) gin.Handle
 			return
 		}
 
-		// 验证查询参数中的密码
 		if password != config.GetConfig().DefaultPassword {
 			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "密码错误"})
 			return
 		}
 
-		// 获取指定客户端的通知
 		notifications := service.GetNotificationsForClient(machineNumber)
-		c.JSON(http.StatusOK, gin.H{"status": "success", "data": notifications})
+		if notifications == nil {
+			notifications = []models.Notification{}
+		}
+		
+		// log.Printf("获取到机器 %s 的通知: %v", machineNumber, notifications)
+		
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success", 
+			"data": notifications,
+		})
 	}
 }
