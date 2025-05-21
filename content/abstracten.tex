@@ -2,12 +2,24 @@
 \phantomsection
 \addcontentsline{toc}{section}{Abstract}
 
-\keywordsen{SZTU;~LaTeX;~Template}
+\keywordsen{Online Examination; Remote Proctoring; C/S Architecture; Electron; Streaming Media; Information Security}
 \categoryen{TP391}
 \begin{abstracten}
-LaTeX can be compiled into a pdf of uniform format using the set template.At present, most domestic publishers and universities still use word. Because of its powerful function and flexibility, when faced with fixed-form papers by novices, simple matters such as typesetting, numbering, and reference documents will bring many difficulties and troubles. For some problems that need to be modified throughout, to achieve the efficiency of LaTeX, it requires a high level of skill for word users.
-
-In order to focus on the writing of papers, many international journals and universities support the writing and submission of LaTeX. Novices don't need to care about formatting issues. They only need to use a few symbolic labels step by step to get the documents that meet the requirements. And when you need to modify the entire format, you can directly recompile the template file by replacing or modifying the template file. This is incredible for the word novice to use the word.
-
-The purpose of this project is to create a TeX template that meets the specifications of the graduate degree thesis of Shenzhen Technology University, and to address the pain points of format adjustment during the dissertation writing.
+With the popularization of online education and remote examinations, ensuring fairness and security has become a 
+significant challenge. Traditional proctoring methods struggle to adapt to online scenarios, and existing remote
+ monitoring tools have limitations. To address these issues, this design aims to develop a secure examination 
+ information transmission and monitoring system based on the C/S architecture. The client-side, built with the 
+ Electron framework, provides a graphical configuration interface, responsible for real-time capture of the 
+ examinee's screen and camera feed, collecting system information (such as MAC address, IP address, CPU usage, 
+ running processes, etc.), and processing/distributing the video stream locally through FFmpeg and Node-Media-Server. 
+ The server-side, developed with Golang and the Gin framework, is responsible for managing client connections and 
+ authentication, displaying client connection status, distributing video stream addresses, and implementing real-time bidirectional 
+ communication with clients via WebSocket (such as sending commands, receiving status information, sending notifications 
+ with configurable priority and recording history). The system also focuses on security, employing mechanisms such 
+ as encrypted storage of local configuration, secure distribution of server access credentials, Token authentication, 
+ and designing anti-cheating measures like prohibiting arbitrary exit and single-instance operation. 
+ Through functional, performance, compatibility, security, and weak network tests conducted in Windows 
+ and macOS environments, the results show that the system is functionally complete, performs stably, exhibits 
+ good compatibility, and offers high security, effectively meeting the real-time monitoring needs for computer-based 
+ exams or competitions and improving proctoring efficiency and exam fairness.
 \end{abstracten}
